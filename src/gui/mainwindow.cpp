@@ -58,31 +58,26 @@ QHash<QString, QColor> makeUkraineFlag() {
     return m;
 }
 
-// USA: blue star field in the top-left canton, red/white stripes by row, with a
-// scatter of white "stars" inside the canton.
+// USA: solid blue over the left third (full height), red/white stripes by row
+// across the right two-thirds.
 QHash<QString, QColor> makeUsaFlag() {
     QHash<QString, QColor> m;
-    const QColor red(178, 34, 52);
+    const QColor red(140, 22, 36);
     const QColor white(255, 255, 255);
-    const QColor blue(60, 59, 110);
-    const float cantonRight  = 7.5f;
-    const float cantonBottom = 3.0f;
+    const QColor blue(28, 28, 75);
+    const float blueRight = krgb::kLayoutWidth / 3.0f;  // left third is blue
     for(std::size_t i = 0; i < krgb::kKeyCount; ++i) {
         const krgb::KeyDef& k = krgb::kKeyMap[i];
         const float cx = k.x + k.w / 2.0f;
         const float cy = k.y + k.h / 2.0f;
         QColor c;
-        if(cx < cantonRight && cy < cantonBottom) {
-            c = blue;  // canton (star field)
+        if(cx < blueRight) {
+            c = blue;
         } else {
             const int row = static_cast<int>(cy);  // ~one stripe per key row
             c = (row % 2 == 0) ? red : white;       // top stripe red
         }
         m.insert(QString::fromLatin1(k.name), c);
-    }
-    // White "stars" scattered through the blue canton.
-    for(const char* s : {"1", "3", "5", "F2", "F4", "W", "E", "R", "T"}) {
-        m.insert(QString::fromLatin1(s), white);
     }
     return m;
 }
