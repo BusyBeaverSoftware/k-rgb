@@ -7,7 +7,11 @@ if(NOT CMAKE_BUILD_TYPE)
     set(CMAKE_BUILD_TYPE Release)
 endif()
 
+include(GNUInstallDirs)
+
 option(BUILD_GUI "Build the KF6 GUI (requires Qt6 + KF6 dev packages)" OFF)
+set(UDEV_RULES_INSTALL_DIR "/lib/udev/rules.d"
+    CACHE PATH "Directory to install the udev rule into")
 
 find_package(Threads REQUIRED)
 
@@ -18,9 +22,10 @@ add_library(krgb-core STATIC
 target_include_directories(krgb-core PUBLIC src)
 target_link_libraries(krgb-core PUBLIC Threads::Threads)
 
-# --- Test CLI: exercises the engine on real hardware ------------------------
+# --- Test / scripting CLI ---------------------------------------------------
 add_executable(krgb-cli src/cli/main.cpp)
 target_link_libraries(krgb-cli PRIVATE krgb-core)
+install(TARGETS krgb-cli RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
 
 # --- GUI: Qt6 + KF6 (opt-in) ------------------------------------------------
 if(BUILD_GUI)
@@ -29,5 +34,16 @@ if(BUILD_GUI)
     include(KDEInstallDirs)
     include(KDECMakeSettings)
     include(KDECompilerSettings NO_POLICY_SCOPE)
+
     add_subdirectory(src/gui)
+
+    # --- Desktop integration ------------------------------------------------
+    install(FILES packaging/io.github.busybeaversoftware.krgb.desktop
+            DESTINATION ${KDE_INSTALL_APPDIR})
+    install(FILES packaging/io.github.busybeaversoftware.krgb.metainfo.xml
+            DESTINATION ${KDE_INSTALL_METAINFODIR})
+    install(FILES packaging/icons/io.github.busybeaversoftware.krgb.svg
+            DESTINATION ${KDE_INSTALL_FULL_ICONDIR}/hicolor/scalable/apps)
+    install(FILES packaging/udev/60-alienware-aw410k.rules
+            DESTINATION ${UDEV_RULES_INSTALL_DIR})
 endif()

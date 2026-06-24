@@ -20,6 +20,8 @@ int main(int argc, char** argv) {
                      KAboutLicense::GPL_V2,
                      i18n("© 2026 Randy Yates"));
     about.addAuthor(i18n("Randy Yates"), QString(), QStringLiteral("randyyates@gmail.com"));
+    about.setHomepage(QStringLiteral("https://github.com/BusyBeaverSoftware/k-rgb"));
+    about.setDesktopFileName(QStringLiteral("io.github.busybeaversoftware.krgb"));
     KAboutData::setApplicationData(about);
     app.setWindowIcon(QIcon::fromTheme(QStringLiteral("input-keyboard")));
 

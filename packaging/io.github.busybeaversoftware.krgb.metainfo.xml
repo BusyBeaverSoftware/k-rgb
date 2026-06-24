@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- SPDX-License-Identifier: CC0-1.0 -->
+<component type="desktop-application">
+  <id>io.github.busybeaversoftware.krgb</id>
+  <metadata_license>CC0-1.0</metadata_license>
+  <project_license>GPL-2.0-or-later</project_license>
+  <name>k-rgb</name>
+  <summary>Control the RGB lighting on the Alienware AW410K keyboard</summary>
+  <description>
+    <p>
+      k-rgb is a native KDE application for controlling the per-key RGB lighting
+      of the Alienware AW410K mechanical keyboard on Linux. It talks directly to
+      the keyboard over hidraw — no vendor software and no root daemon.
+    </p>
+    <p>Features:</p>
+    <ul>
+      <li>Solid colour and per-key static rainbow</li>
+      <li>Hardware effects: breathing, pulse, spectrum, single and rainbow waves, scanner</li>
+      <li>Brightness control and a system-tray quick-switcher</li>
+      <li>Remembers your lighting and restores it at login</li>
+    </ul>
+  </description>
+  <launchable type="desktop-id">io.github.busybeaversoftware.krgb.desktop</launchable>
+  <icon type="stock">io.github.busybeaversoftware.krgb</icon>
+  <categories>
+    <category>Utility</category>
+    <category>HardwareSettings</category>
+  </categories>
+  <url type="homepage">https://github.com/BusyBeaverSoftware/k-rgb</url>
+  <url type="bugtracker">https://github.com/BusyBeaverSoftware/k-rgb/issues</url>
+  <provides>
+    <binary>krgb</binary>
+  </provides>
+  <developer id="io.github.busybeaversoftware">
+    <name>BusyBeaverSoftware</name>
+  </developer>
+  <content_rating type="oars-1.1"/>
+  <releases>
+    <release version="0.1.0" date="2026-06-24">
+      <description>
+        <p>First release: solid colour, per-key rainbow, hardware effects, brightness, system tray, and restore-on-login.</p>
+      </description>
+    </release>
+  </releases>
+</component>

@@ -67,6 +67,18 @@ This produces:
 The core engine and CLI have **no Qt/KF6 dependency** — omit `-DBUILD_GUI=ON`
 to build just those.
 
+## Install
+
+```bash
+sudo cmake --install build
+```
+
+Installs `krgb` and `krgb-cli` to `/usr/local/bin`, the desktop entry, icon,
+AppStream metainfo, and the udev rule (to `/lib/udev/rules.d`). Pass
+`-DCMAKE_INSTALL_PREFIX=/usr` at configure time to install under `/usr` instead.
+After installing, **k-rgb** appears in your application menu; reload udev (below)
+once so the keyboard is accessible without root.
+
 ## Permissions (run without root)
 
 Install the udev rule so your desktop user can access the keyboard's lighting

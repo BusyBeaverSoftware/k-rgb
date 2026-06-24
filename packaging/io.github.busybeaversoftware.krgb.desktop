@@ -1,0 +1,12 @@
+[Desktop Entry]
+Type=Application
+Name=k-rgb
+GenericName=Keyboard Lighting
+Comment=Control the RGB lighting on the Alienware AW410K keyboard
+Exec=krgb
+Icon=io.github.busybeaversoftware.krgb
+Terminal=false
+Categories=Utility;Qt;KDE;Settings;HardwareSettings;
+Keywords=RGB;LED;Alienware;Keyboard;Lighting;AW410K;Backlight;
+StartupNotify=true
+StartupWMClass=krgb
