@@ -1,8 +1,10 @@
 #include "mainwindow.h"
 
 #include "keyboardcontroller.h"
+#include "keyboardwidget.h"
 #include "core/aw410k_device.h"
 
+#include <QActionGroup>
 #include <QApplication>
 #include <QCheckBox>
 #include <QCloseEvent>
@@ -13,8 +15,11 @@
 #include <QFileInfo>
 #include <QFormLayout>
 #include <QHBoxLayout>
+#include <QInputDialog>
 #include <QLabel>
+#include <QLineEdit>
 #include <QMenu>
+#include <QMessageBox>
 #include <QPushButton>
 #include <QSlider>
 #include <QStandardPaths>
@@ -38,8 +43,11 @@ MainWindow::MainWindow(KeyboardController* controller, QWidget* parent)
     populateModes();
     buildUi();
     setupTray();
-    loadSettings();
-    resize(440, 320);
+
+    refreshProfileCombo();
+    switchToProfile(Profiles::current(), /*apply=*/false);
+
+    resize(460, 360);
     setAutoSaveSettings();
 
     connect(controller_, &KeyboardController::connectionChanged,
@@ -52,16 +60,17 @@ MainWindow::MainWindow(KeyboardController* controller, QWidget* parent)
 }
 
 void MainWindow::populateModes() {
-    //          name                       value                          solid  rnbw   color  speed  dir
+    //          name                       value                          solid  rnbw   pkey   color  speed  dir
     modes_ = {
-        { i18n("Solid colour"),     static_cast<int>(Mode::Direct),      true,  false, true,  false, false },
-        { i18n("Rainbow (static)"), 0,                                   false, true,  false, false, false },
-        { i18n("Breathing"),        static_cast<int>(Mode::Breathing),   false, false, true,  true,  false },
-        { i18n("Pulse"),            static_cast<int>(Mode::Pulse),       false, false, true,  true,  false },
-        { i18n("Spectrum"),         static_cast<int>(Mode::Spectrum),    false, false, false, true,  false },
-        { i18n("Single wave"),      static_cast<int>(Mode::SingleWave),  false, false, true,  true,  true  },
-        { i18n("Rainbow wave"),     static_cast<int>(Mode::RainbowWave), false, false, false, true,  true  },
-        { i18n("Scanner"),          static_cast<int>(Mode::Scanner),     false, false, true,  true,  false },
+        { i18n("Solid colour"),     static_cast<int>(Mode::Direct),      true,  false, false, true,  false, false },
+        { i18n("Rainbow (static)"), 0,                                   false, true,  false, false, false, false },
+        { i18n("Per-key (custom)"), 0,                                   false, false, true,  true,  false, false },
+        { i18n("Breathing"),        static_cast<int>(Mode::Breathing),   false, false, false, true,  true,  false },
+        { i18n("Pulse"),            static_cast<int>(Mode::Pulse),       false, false, false, true,  true,  false },
+        { i18n("Spectrum"),         static_cast<int>(Mode::Spectrum),    false, false, false, false, true,  false },
+        { i18n("Single wave"),      static_cast<int>(Mode::SingleWave),  false, false, false, true,  true,  true  },
+        { i18n("Rainbow wave"),     static_cast<int>(Mode::RainbowWave), false, false, false, false, true,  true  },
+        { i18n("Scanner"),          static_cast<int>(Mode::Scanner),     false, false, false, true,  true,  false },
     };
 }
 
@@ -69,6 +78,24 @@ void MainWindow::buildUi() {
     auto* central = new QWidget(this);
     auto* outer = new QVBoxLayout(central);
 
+    // --- Profile bar -------------------------------------------------------
+    auto* profileRow = new QHBoxLayout();
+    profileRow->addWidget(new QLabel(i18n("Profile:"), central));
+    profileCombo_ = new QComboBox(central);
+    profileCombo_->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Preferred);
+    profileRow->addWidget(profileCombo_, 1);
+    newProfileBtn_ = new QPushButton(QIcon::fromTheme(QStringLiteral("list-add")), QString(), central);
+    newProfileBtn_->setToolTip(i18n("New profile"));
+    renameProfileBtn_ = new QPushButton(QIcon::fromTheme(QStringLiteral("edit-rename")), QString(), central);
+    renameProfileBtn_->setToolTip(i18n("Rename profile"));
+    deleteProfileBtn_ = new QPushButton(QIcon::fromTheme(QStringLiteral("edit-delete")), QString(), central);
+    deleteProfileBtn_->setToolTip(i18n("Delete profile"));
+    profileRow->addWidget(newProfileBtn_);
+    profileRow->addWidget(renameProfileBtn_);
+    profileRow->addWidget(deleteProfileBtn_);
+    outer->addLayout(profileRow);
+
+    // --- Lighting form -----------------------------------------------------
     auto* form = new QFormLayout();
     form->setLabelAlignment(Qt::AlignRight);
 
@@ -106,6 +133,40 @@ void MainWindow::buildUi() {
     form->addRow(i18n("Brightness:"), brightnessRow);
 
     outer->addLayout(form);
+
+    // --- Per-key editor (shown only in Per-key mode) -----------------------
+    perKeyPanel_ = new QWidget(central);
+    auto* pkLayout = new QVBoxLayout(perKeyPanel_);
+    pkLayout->setContentsMargins(0, 0, 0, 0);
+
+    keyboardWidget_ = new KeyboardWidget(perKeyPanel_);
+    pkLayout->addWidget(keyboardWidget_, 1);
+
+    auto* pkControls = new QHBoxLayout();
+    selectionLabel_ = new QLabel(i18n("No keys selected"), perKeyPanel_);
+    pkControls->addWidget(selectionLabel_);
+    pkControls->addStretch();
+    auto* selectAllBtn = new QPushButton(i18n("Select All"), perKeyPanel_);
+    auto* paintBtn     = new QPushButton(i18n("Paint Selected"), perKeyPanel_);
+    auto* offSelBtn    = new QPushButton(i18n("Off Selected"), perKeyPanel_);
+    auto* fillBtn      = new QPushButton(i18n("Fill All"), perKeyPanel_);
+    pkControls->addWidget(selectAllBtn);
+    pkControls->addWidget(paintBtn);
+    pkControls->addWidget(offSelBtn);
+    pkControls->addWidget(fillBtn);
+    pkLayout->addLayout(pkControls);
+
+    auto* hint = new QLabel(
+        i18n("Click keys to select; drag to box-select; Ctrl-click to add. "
+             "Pick a colour above, then Paint Selected."),
+        perKeyPanel_);
+    hint->setWordWrap(true);
+    hint->setEnabled(false);
+    pkLayout->addWidget(hint);
+
+    perKeyPanel_->setVisible(false);
+    outer->addWidget(perKeyPanel_, 1);
+
     outer->addStretch();
 
     autostartCheck_ = new QCheckBox(i18n("Restore lighting at login"), central);
@@ -125,21 +186,43 @@ void MainWindow::buildUi() {
 
     setCentralWidget(central);
 
-    // Connection status lives compactly in the status bar.
     statusLabel_ = new QLabel(this);
     statusLabel_->setTextFormat(Qt::RichText);
     statusBar()->addPermanentWidget(statusLabel_);
 
+    // --- Connections -------------------------------------------------------
     connect(modeCombo_, &QComboBox::currentIndexChanged, this, &MainWindow::onModeChanged);
     connect(brightnessSlider_, &QSlider::valueChanged, this, &MainWindow::onBrightnessChanged);
     connect(applyButton_, &QPushButton::clicked, this, &MainWindow::onApply);
     connect(offButton_, &QPushButton::clicked, this, &MainWindow::onOff);
     connect(autostartCheck_, &QCheckBox::toggled, this, &MainWindow::onAutostartToggled);
 
+    connect(profileCombo_, &QComboBox::currentIndexChanged, this, &MainWindow::onProfileSelected);
+    connect(newProfileBtn_, &QPushButton::clicked, this, &MainWindow::onNewProfile);
+    connect(renameProfileBtn_, &QPushButton::clicked, this, &MainWindow::onRenameProfile);
+    connect(deleteProfileBtn_, &QPushButton::clicked, this, &MainWindow::onDeleteProfile);
+
+    connect(selectAllBtn, &QPushButton::clicked, keyboardWidget_, &KeyboardWidget::selectAll);
+    connect(paintBtn, &QPushButton::clicked, this, &MainWindow::onPaintSelection);
+    connect(offSelBtn, &QPushButton::clicked, this, &MainWindow::onOffSelection);
+    connect(fillBtn, &QPushButton::clicked, this, &MainWindow::onFillAll);
+    connect(keyboardWidget_, &KeyboardWidget::changed, this, &MainWindow::onPerKeyChanged);
+    connect(keyboardWidget_, &KeyboardWidget::selectionChanged, this, [this](int count) {
+        selectionLabel_->setText(count == 0 ? i18n("No keys selected")
+                                            : i18np("%1 key selected", "%1 keys selected", count));
+    });
+
     // Live feedback: re-apply when the colour changes or the brightness slider
     // is released, so the keyboard tracks the controls without hitting Apply.
     connect(colorButton_, &KColorButton::changed, this, [this]() {
-        if(!loading_ && controller_->isConnected()) {
+        if(loading_) {
+            return;
+        }
+        const ModeEntry& m = modes_.at(modeCombo_->currentIndex());
+        if(m.perkey) {
+            return;  // colour is just the paint source in per-key mode
+        }
+        if(controller_->isConnected()) {
             onApply();
         }
     });
@@ -160,7 +243,6 @@ void MainWindow::setupTray() {
     tray_->setStatus(KStatusNotifierItem::Active);
     tray_->setStandardActionsEnabled(false);
 
-    // Left-click toggles the window.
     connect(tray_, &KStatusNotifierItem::activateRequested, this, [this](bool, const QPoint&) {
         if(isVisible() && !isMinimized()) {
             hide();
@@ -172,8 +254,12 @@ void MainWindow::setupTray() {
         }
     });
 
-    // Right-click: quick lighting controls.
     auto* menu = new QMenu(this);
+
+    profilesMenu_ = menu->addMenu(QIcon::fromTheme(QStringLiteral("document-multiple")),
+                                  i18n("Profiles"));
+    rebuildProfilesMenu();
+
     menu->addSection(i18n("Quick lighting"));
 
     QAction* offAction = menu->addAction(QIcon::fromTheme(QStringLiteral("system-shutdown")), i18n("Off"));
@@ -220,16 +306,125 @@ void MainWindow::setupTray() {
     tray_->setContextMenu(menu);
 }
 
-void MainWindow::loadSettings() {
-    loading_ = true;
-    const LightingSettings s = LightingSettings::load();
+void MainWindow::rebuildProfilesMenu() {
+    if(!profilesMenu_) {
+        return;
+    }
+    profilesMenu_->clear();
+    delete profileGroup_;
+    profileGroup_ = new QActionGroup(this);
+    profileGroup_->setExclusive(true);
 
+    const QString cur = Profiles::current();
+    for(const QString& name : Profiles::names()) {
+        QAction* a = profilesMenu_->addAction(name);
+        a->setCheckable(true);
+        a->setChecked(name == cur);
+        profileGroup_->addAction(a);
+        connect(a, &QAction::triggered, this, [this, name] {
+            // Route through the combo so window + tray stay in sync.
+            profileCombo_->setCurrentText(name);
+        });
+    }
+}
+
+// --- Profile management -----------------------------------------------------
+
+void MainWindow::refreshProfileCombo() {
+    const bool wasLoading = loading_;
+    loading_ = true;
+    profileCombo_->clear();
+    profileCombo_->addItems(Profiles::names());
+    profileCombo_->setCurrentText(Profiles::current());
+    loading_ = wasLoading;
+    deleteProfileBtn_->setEnabled(Profiles::names().size() > 1);
+}
+
+void MainWindow::switchToProfile(const QString& name, bool apply) {
+    loading_ = true;
+    const LightingSettings s = LightingSettings::load(name);
+    loadProfileIntoUi(s);
+    Profiles::setCurrent(name);
+    loading_ = false;
+
+    if(apply && controller_->isConnected()) {
+        s.apply(*controller_);
+    }
+    deleteProfileBtn_->setEnabled(Profiles::names().size() > 1);
+    rebuildProfilesMenu();
+}
+
+void MainWindow::onProfileSelected(int index) {
+    if(loading_ || index < 0) {
+        return;
+    }
+    switchToProfile(profileCombo_->itemText(index), /*apply=*/true);
+}
+
+void MainWindow::onNewProfile() {
+    bool ok = false;
+    const QString name = QInputDialog::getText(this, i18n("New Profile"),
+                                               i18n("Profile name:"), QLineEdit::Normal,
+                                               QString(), &ok).trimmed();
+    if(!ok || name.isEmpty()) {
+        return;
+    }
+    if(Profiles::exists(name)) {
+        QMessageBox::warning(this, i18n("New Profile"),
+                             i18n("A profile named “%1” already exists.", name));
+        return;
+    }
+    Profiles::add(name, currentSettings());  // seed from current UI
+    Profiles::setCurrent(name);
+    refreshProfileCombo();
+    rebuildProfilesMenu();
+}
+
+void MainWindow::onRenameProfile() {
+    const QString from = Profiles::current();
+    bool ok = false;
+    const QString to = QInputDialog::getText(this, i18n("Rename Profile"),
+                                             i18n("New name:"), QLineEdit::Normal,
+                                             from, &ok).trimmed();
+    if(!ok || to.isEmpty() || to == from) {
+        return;
+    }
+    if(Profiles::exists(to)) {
+        QMessageBox::warning(this, i18n("Rename Profile"),
+                             i18n("A profile named “%1” already exists.", to));
+        return;
+    }
+    Profiles::rename(from, to);
+    refreshProfileCombo();
+    rebuildProfilesMenu();
+}
+
+void MainWindow::onDeleteProfile() {
+    const QString cur = Profiles::current();
+    if(Profiles::names().size() <= 1) {
+        return;
+    }
+    if(QMessageBox::question(this, i18n("Delete Profile"),
+                             i18n("Delete the profile “%1”?", cur))
+       != QMessageBox::Yes) {
+        return;
+    }
+    Profiles::remove(cur);
+    refreshProfileCombo();
+    switchToProfile(Profiles::current(), /*apply=*/true);
+}
+
+// --- UI <-> settings --------------------------------------------------------
+
+void MainWindow::loadProfileIntoUi(const LightingSettings& s) {
     int idx = 0;
     for(int i = 0; i < modes_.size(); ++i) {
         const ModeEntry& m = modes_.at(i);
         if(s.kind == LightingSettings::Solid && m.solid) { idx = i; break; }
         if(s.kind == LightingSettings::Rainbow && m.rainbow) { idx = i; break; }
-        if(s.kind == LightingSettings::Effect && !m.solid && !m.rainbow && m.value == s.effectMode) {
+        if(s.kind == LightingSettings::PerKey && m.perkey) { idx = i; break; }
+        if(s.kind == LightingSettings::Effect && !m.solid && !m.rainbow && !m.perkey
+           && m.value == s.effectMode) {
             idx = i;
             break;
         }
@@ -246,8 +441,7 @@ void MainWindow::loadSettings() {
     }
     brightnessSlider_->setValue(s.brightness);
     brightnessValue_->setText(QStringLiteral("%1%").arg(s.brightness));
-
-    loading_ = false;
+    keyboardWidget_->setKeyColors(s.keyColors);
 }
 
 LightingSettings MainWindow::currentSettings() const {
@@ -257,6 +451,9 @@ LightingSettings MainWindow::currentSettings() const {
         s.kind = LightingSettings::Solid;
     } else if(m.rainbow) {
         s.kind = LightingSettings::Rainbow;
+    } else if(m.perkey) {
+        s.kind = LightingSettings::PerKey;
+        s.keyColors = keyboardWidget_->keyColors();
     } else {
         s.kind = LightingSettings::Effect;
         s.effectMode = m.value;
@@ -277,6 +474,12 @@ void MainWindow::onModeChanged() {
     colorButton_->setEnabled(m.usesColor);
     speedCombo_->setEnabled(m.usesSpeed);
     directionCombo_->setEnabled(m.usesDirection);
+
+    perKeyPanel_->setVisible(m.perkey);
+    if(m.perkey) {
+        // Grow (never shrink) so the keyboard has room.
+        resize(qMax(width(), 780), qMax(height(), 560));
+    }
 }
 
 void MainWindow::onBrightnessChanged(int value) {
@@ -290,12 +493,39 @@ void MainWindow::onApply() {
     }
     const LightingSettings s = currentSettings();
     s.apply(*controller_);
-    s.save();
+    s.save(Profiles::current());
 }
 
 void MainWindow::onOff() {
     controller_->applyOff();
 }
+
+// --- Per-key editor ---------------------------------------------------------
+
+void MainWindow::onPaintSelection() {
+    keyboardWidget_->paintSelection(colorButton_->color());
+}
+
+void MainWindow::onOffSelection() {
+    keyboardWidget_->clearSelection();
+}
+
+void MainWindow::onFillAll() {
+    keyboardWidget_->fillAll(colorButton_->color());
+}
+
+void MainWindow::onPerKeyChanged() {
+    if(loading_) {
+        return;
+    }
+    const LightingSettings s = currentSettings();
+    if(controller_->isConnected()) {
+        s.apply(*controller_);
+    }
+    s.save(Profiles::current());
+}
+
+// --- Autostart / status -----------------------------------------------------
 
 void MainWindow::onAutostartToggled(bool checked) {
     const QString path = autostartFilePath();

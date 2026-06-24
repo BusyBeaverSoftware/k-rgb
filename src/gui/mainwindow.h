@@ -5,15 +5,19 @@
 
 #include "settings.h"
 
+class QActionGroup;
 class QCheckBox;
 class QCloseEvent;
 class QComboBox;
 class QLabel;
+class QMenu;
 class QPushButton;
 class QSlider;
+class QWidget;
 class KColorButton;
 class KStatusNotifierItem;
 class KeyboardController;
+class KeyboardWidget;
 
 class MainWindow : public KMainWindow {
     Q_OBJECT
@@ -32,12 +36,25 @@ private Q_SLOTS:
     void onConnectionChanged(bool connected, const QString& path);
     void onError(const QString& message);
 
+    // Profiles
+    void onProfileSelected(int index);
+    void onNewProfile();
+    void onRenameProfile();
+    void onDeleteProfile();
+
+    // Per-key editor
+    void onPaintSelection();
+    void onOffSelection();
+    void onFillAll();
+    void onPerKeyChanged();
+
 private:
     struct ModeEntry {
         QString name;
         int     value;          // krgb::Mode value
         bool    solid;          // route through applySolid()
         bool    rainbow;        // route through applyRainbow() (per-key static rainbow)
+        bool    perkey;         // route through applyPerKey() (custom per-key editor)
         bool    usesColor;
         bool    usesSpeed;
         bool    usesDirection;
@@ -46,13 +63,21 @@ private:
     void             buildUi();
     void             setupTray();
     void             populateModes();
-    void             loadSettings();
+    void             loadProfileIntoUi(const LightingSettings& s);
+    void             switchToProfile(const QString& name, bool apply);
+    void             refreshProfileCombo();
+    void             rebuildProfilesMenu();
     LightingSettings currentSettings() const;
     QString          autostartFilePath() const;
 
     KeyboardController* controller_;
     QVector<ModeEntry>  modes_;
     bool                loading_ = false;
+
+    QComboBox*    profileCombo_     = nullptr;
+    QPushButton*  newProfileBtn_    = nullptr;
+    QPushButton*  renameProfileBtn_ = nullptr;
+    QPushButton*  deleteProfileBtn_ = nullptr;
 
     QLabel*       statusLabel_      = nullptr;
     KColorButton* colorButton_      = nullptr;
@@ -65,5 +90,11 @@ private:
     QPushButton*  applyButton_      = nullptr;
     QPushButton*  offButton_        = nullptr;
 
-    KStatusNotifierItem* tray_      = nullptr;
+    QWidget*        perKeyPanel_    = nullptr;
+    KeyboardWidget* keyboardWidget_ = nullptr;
+    QLabel*         selectionLabel_ = nullptr;
+
+    KStatusNotifierItem* tray_         = nullptr;
+    QMenu*               profilesMenu_ = nullptr;
+    QActionGroup*        profileGroup_ = nullptr;
 };

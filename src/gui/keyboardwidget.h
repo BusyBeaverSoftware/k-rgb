@@ -1,0 +1,65 @@
+// KeyboardWidget — a graphical AW410K layout for editing per-key colours.
+//
+// Draws every key in its real position (from keymap.h geometry). Click a key to
+// select it, drag to rubber-band a group, Ctrl-click to add/remove. The current
+// selection can then be painted a colour. Keys keep their assigned colour as a
+// swatch; unassigned keys render dark.
+#pragma once
+
+#include <QColor>
+#include <QHash>
+#include <QRectF>
+#include <QSet>
+#include <QString>
+#include <QVector>
+#include <QWidget>
+
+class KeyboardWidget : public QWidget {
+    Q_OBJECT
+public:
+    explicit KeyboardWidget(QWidget* parent = nullptr);
+
+    // Only keys that have an assigned (non-default) colour.
+    QHash<QString, QColor> keyColors() const { return colors_; }
+    void                   setKeyColors(const QHash<QString, QColor>& colors);
+
+    QStringList selectedKeys() const;
+
+public Q_SLOTS:
+    void paintSelection(const QColor& color);  // colour the current selection
+    void clearSelection();                     // off (black) the current selection
+    void selectAll();
+    void fillAll(const QColor& color);         // colour every key
+
+Q_SIGNALS:
+    void changed();                 // colours changed (re-apply to hardware)
+    void selectionChanged(int count);
+
+protected:
+    void paintEvent(QPaintEvent*) override;
+    void mousePressEvent(QMouseEvent*) override;
+    void mouseMoveEvent(QMouseEvent*) override;
+    void mouseReleaseEvent(QMouseEvent*) override;
+    QSize sizeHint() const override { return QSize(640, 200); }
+    int   heightForWidth(int w) const override;
+    bool  hasHeightForWidth() const override { return true; }
+
+private:
+    struct KeyRect {
+        QString name;
+        QRectF  cell;  // pixel rect, recomputed on resize
+    };
+
+    void          recomputeLayout();
+    const QString keyAt(const QPointF& p) const;
+
+    QHash<QString, QColor> colors_;     // assigned colours only
+    QSet<QString>          selected_;
+    QVector<KeyRect>       rects_;
+
+    bool          dragging_   = false;
+    bool          moved_      = false;
+    QPointF       pressPos_;
+    QRectF        rubber_;
+    QSet<QString> baseSelection_;  // selection at drag start (for additive drags)
+};

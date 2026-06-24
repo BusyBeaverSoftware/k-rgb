@@ -7,21 +7,25 @@ keyboard on Linux — no vendor software, no root daemon, no cloud.
 It talks directly to the keyboard's vendor HID interface over `hidraw`, so it's
 small, fast, and dependency-light.
 
-> Status: early but fully working — solid colours, per-key static rainbow, all
-> the hardware effects, brightness, a system-tray quick-switcher, and
-> restore-on-login. A visual per-key editor and named profiles are on the way.
+> Status: fully working — solid colours, a visual per-key editor, named
+> profiles, per-key static rainbow, all the hardware effects, brightness, a
+> system-tray quick-switcher, and restore-on-login.
 
 ## Features
 
 - **Solid colour** across the whole keyboard
+- **Per-key custom editor** — a graphical keyboard you paint directly: click,
+  box-select, or Ctrl-click keys, pick a colour, and assign it per key
+- **Named profiles** — save any number of lighting setups and switch between
+  them from the window or the tray; the active one is restored at login
 - **Per-key static rainbow** (all 107 keys individually addressed)
-- **Hardware effects** that run on the keyboard itself: Static, Breathing,
+- **Hardware effects** that run on the keyboard itself: Breathing,
   Pulse, Spectrum, Single Wave, Rainbow Wave, Scanner
 - **Speed** and **direction** controls (per effect)
 - **Brightness** (software intensity scaling) with live preview
-- **System-tray icon** (`KStatusNotifierItem`) with quick controls — Off,
-  Rainbow, Spectrum, colour presets, show/hide, quit
-- **Remembers your last setting** and can **restore it at login**
+- **System-tray icon** (`KStatusNotifierItem`) with quick controls — profile
+  switcher, Off, Rainbow, Spectrum, colour presets, show/hide, quit
+- **Remembers your setup** and can **restore it at login**
 - Runs **without root** via a udev rule
 
 ## Supported hardware
@@ -105,6 +109,16 @@ Pick a mode/colour and hit **Apply**, or right-click the tray icon for quick
 presets. Tick **Restore lighting at login** to re-apply your choice after a
 reboot. Closing the window hides it to the tray; quit from the tray menu.
 
+**Per-key editor:** choose **Per-key (custom)** as the mode to reveal a
+graphical keyboard. Click a key to select it, drag a box to select many, or
+Ctrl-click to add/remove. Pick a colour, then **Paint Selected** (or **Fill
+All**); **Off Selected** turns keys dark. Changes apply live.
+
+**Profiles:** use the **Profile** bar at the top to create, rename, or delete
+named setups. Switching profiles (in the window or from the tray's **Profiles**
+submenu) applies it immediately; the active profile is the one restored at
+login.
+
 ### CLI
 
 ```bash
@@ -151,9 +165,8 @@ packaging/    udev rule for rootless access
 
 ## Roadmap
 
-- Visual per-key painting editor
-- Multiple named profiles
-- `make install` + application menu entry
+- Per-key colours in the CLI (`krgb-cli` currently does single keys / rainbow)
+- Import/export profiles to a file
 - Additional Alienware devices (AW510K, mouse, headset, chassis AlienFX)
 
 ## Credits

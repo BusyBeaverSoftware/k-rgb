@@ -14,7 +14,9 @@
     </p>
     <p>Features:</p>
     <ul>
-      <li>Solid colour and per-key static rainbow</li>
+      <li>Solid colour and a graphical per-key editor you paint directly</li>
+      <li>Named profiles you can switch from the window or the system tray</li>
+      <li>Per-key static rainbow across all 107 keys</li>
       <li>Hardware effects: breathing, pulse, spectrum, single and rainbow waves, scanner</li>
       <li>Brightness control and a system-tray quick-switcher</li>
       <li>Remembers your lighting and restores it at login</li>
@@ -36,6 +38,11 @@
   </developer>
   <content_rating type="oars-1.1"/>
   <releases>
+    <release version="0.2.0" date="2026-06-24">
+      <description>
+        <p>Adds a graphical per-key colour editor and named profiles you can switch from the window or the system tray.</p>
+      </description>
+    </release>
     <release version="0.1.0" date="2026-06-24">
       <description>
         <p>First release: solid colour, per-key rainbow, hardware effects, brightness, system tray, and restore-on-login.</p>

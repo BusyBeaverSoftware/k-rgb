@@ -6,6 +6,7 @@
 #pragma once
 
 #include <QColor>
+#include <QHash>
 #include <QObject>
 #include <QString>
 
@@ -25,6 +26,9 @@ public:
 public Q_SLOTS:
     bool applySolid(const QColor& color, int brightnessPct);
     bool applyRainbow(int brightnessPct);  // per-key static rainbow across all keys
+    // Per-key custom colours, keyed by key name (see keymap.h). Keys absent from
+    // the map are turned off.
+    bool applyPerKey(const QHash<QString, QColor>& keyColors, int brightnessPct);
     bool applyEffect(int modeValue, int speedValue, int directionValue,
                      const QColor& color, int brightnessPct);
     bool applyOff();

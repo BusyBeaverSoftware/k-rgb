@@ -15,7 +15,7 @@ int main(int argc, char** argv) {
 
     KAboutData about(QStringLiteral("krgb"),
                      i18n("k-rgb"),
-                     QStringLiteral("0.1.0"),
+                     QStringLiteral("0.2.0"),
                      i18n("Control the RGB lighting on the Alienware AW410K keyboard"),
                      KAboutLicense::GPL_V2,
                      i18n("© 2026 Randy Yates"));
@@ -32,7 +32,7 @@ int main(int argc, char** argv) {
     // re-apply the saved lighting and exit, without showing a window.
     if(app.arguments().contains(QStringLiteral("--apply"))) {
         KeyboardController controller;
-        LightingSettings::load().apply(controller);
+        LightingSettings::load(Profiles::current()).apply(controller);
         return 0;
     }
 

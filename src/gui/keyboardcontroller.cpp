@@ -92,6 +92,28 @@ bool KeyboardController::applyRainbow(int brightnessPct) {
     return true;
 }
 
+bool KeyboardController::applyPerKey(const QHash<QString, QColor>& keyColors, int brightnessPct) {
+    if(!ensureOpen()) {
+        return false;
+    }
+    const int pct = qBound(0, brightnessPct, 100);
+    std::vector<krgb::KeyColor> keys;
+    keys.reserve(krgb::kKeyCount);
+    for(std::size_t i = 0; i < krgb::kKeyCount; ++i) {
+        const QString name = QString::fromLatin1(krgb::kKeyMap[i].name);
+        const QColor c = keyColors.value(name, QColor(0, 0, 0));
+        keys.push_back({krgb::kKeyMap[i].idx,
+                        static_cast<std::uint8_t>(c.red() * pct / 100),
+                        static_cast<std::uint8_t>(c.green() * pct / 100),
+                        static_cast<std::uint8_t>(c.blue() * pct / 100)});
+    }
+    if(!device_.setPerKey(keys)) {
+        Q_EMIT error(i18n("Failed to set per-key colours."));
+        return false;
+    }
+    return true;
+}
+
 bool KeyboardController::applyEffect(int modeValue, int speedValue, int directionValue,
                                      const QColor& color, int brightnessPct) {
     if(!ensureOpen()) {
