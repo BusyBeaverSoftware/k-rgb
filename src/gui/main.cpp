@@ -49,6 +49,10 @@ int main(int argc, char** argv) {
                          window->activateWindow();
                      });
 
-    window->show();
+    // `--tray` (used by the "Start in system tray at login" autostart entry)
+    // starts hidden: the tray icon is live, but no window pops up at login.
+    if(!app.arguments().contains(QStringLiteral("--tray"))) {
+        window->show();
+    }
     return app.exec();
 }

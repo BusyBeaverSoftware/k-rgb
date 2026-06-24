@@ -106,8 +106,15 @@ group. Until this is installed you can still run the tools with `sudo`.
 ```
 
 Pick a mode/colour and hit **Apply**, or right-click the tray icon for quick
-presets. Tick **Restore lighting at login** to re-apply your choice after a
-reboot. Closing the window hides it to the tray; quit from the tray menu.
+presets. Closing the window hides it to the tray; quit from the tray menu.
+
+Two independent login options live at the bottom of the window:
+
+- **Restore lighting at login** — re-applies the active profile's lighting at
+  login (runs `krgb --apply` headlessly and exits; no window, no tray icon).
+- **Start k-rgb in the system tray at login** — launches k-rgb hidden to the
+  tray (`krgb --tray`) so the quick-switcher is always available. Tick both if
+  you want the tray icon *and* your lighting restored.
 
 **Per-key editor:** choose **Per-key (custom)** as the mode to reveal a
 graphical keyboard. Click a key to select it, drag a box to select many, or

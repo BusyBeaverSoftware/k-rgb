@@ -171,7 +171,15 @@ void MainWindow::buildUi() {
 
     autostartCheck_ = new QCheckBox(i18n("Restore lighting at login"), central);
     autostartCheck_->setChecked(QFile::exists(autostartFilePath()));
+    autostartCheck_->setToolTip(i18n("Re-apply the active profile's lighting when you log in."));
     outer->addWidget(autostartCheck_);
+
+    trayAutostartCheck_ = new QCheckBox(i18n("Start k-rgb in the system tray at login"), central);
+    trayAutostartCheck_->setChecked(QFile::exists(trayAutostartFilePath()));
+    trayAutostartCheck_->setToolTip(
+        i18n("Launch k-rgb (hidden, to the system tray) when you log in, so the "
+             "tray quick-switcher is always available."));
+    outer->addWidget(trayAutostartCheck_);
 
     auto* buttons = new QHBoxLayout();
     offButton_ = new QPushButton(QIcon::fromTheme(QStringLiteral("system-shutdown")),
@@ -196,6 +204,7 @@ void MainWindow::buildUi() {
     connect(applyButton_, &QPushButton::clicked, this, &MainWindow::onApply);
     connect(offButton_, &QPushButton::clicked, this, &MainWindow::onOff);
     connect(autostartCheck_, &QCheckBox::toggled, this, &MainWindow::onAutostartToggled);
+    connect(trayAutostartCheck_, &QCheckBox::toggled, this, &MainWindow::onTrayAutostartToggled);
 
     connect(profileCombo_, &QComboBox::currentIndexChanged, this, &MainWindow::onProfileSelected);
     connect(newProfileBtn_, &QPushButton::clicked, this, &MainWindow::onNewProfile);
@@ -527,25 +536,38 @@ void MainWindow::onPerKeyChanged() {
 
 // --- Autostart / status -----------------------------------------------------
 
+void MainWindow::writeAutostartEntry(const QString& path, const QString& name, const QString& args) {
+    QDir().mkpath(QFileInfo(path).absolutePath());
+    const QString exec = QCoreApplication::applicationFilePath() + args;
+    QFile f(path);
+    if(f.open(QIODevice::WriteOnly | QIODevice::Text)) {
+        QTextStream ts(&f);
+        ts << "[Desktop Entry]\n"
+           << "Type=Application\n"
+           << "Name=" << name << "\n"
+           << "Exec=" << exec << "\n"
+           << "Icon=input-keyboard\n"
+           << "Terminal=false\n"
+           << "NoDisplay=true\n"
+           << "X-GNOME-Autostart-enabled=true\n";
+    } else {
+        onError(i18n("Could not write autostart entry to %1", path));
+    }
+}
+
 void MainWindow::onAutostartToggled(bool checked) {
     const QString path = autostartFilePath();
     if(checked) {
-        QDir().mkpath(QFileInfo(path).absolutePath());
-        const QString exec = QCoreApplication::applicationFilePath() + QStringLiteral(" --apply");
-        QFile f(path);
-        if(f.open(QIODevice::WriteOnly | QIODevice::Text)) {
-            QTextStream ts(&f);
-            ts << "[Desktop Entry]\n"
-               << "Type=Application\n"
-               << "Name=k-rgb (restore lighting)\n"
-               << "Exec=" << exec << "\n"
-               << "Icon=input-keyboard\n"
-               << "Terminal=false\n"
-               << "NoDisplay=true\n"
-               << "X-GNOME-Autostart-enabled=true\n";
-        } else {
-            onError(i18n("Could not write autostart entry to %1", path));
-        }
+        writeAutostartEntry(path, i18n("k-rgb (restore lighting)"), QStringLiteral(" --apply"));
+    } else {
+        QFile::remove(path);
+    }
+}
+
+void MainWindow::onTrayAutostartToggled(bool checked) {
+    const QString path = trayAutostartFilePath();
+    if(checked) {
+        writeAutostartEntry(path, i18n("k-rgb (system tray)"), QStringLiteral(" --tray"));
     } else {
         QFile::remove(path);
     }
@@ -554,6 +576,11 @@ void MainWindow::onAutostartToggled(bool checked) {
 QString MainWindow::autostartFilePath() const {
     return QStandardPaths::writableLocation(QStandardPaths::GenericConfigLocation) +
            QStringLiteral("/autostart/krgb-restore.desktop");
+}
+
+QString MainWindow::trayAutostartFilePath() const {
+    return QStandardPaths::writableLocation(QStandardPaths::GenericConfigLocation) +
+           QStringLiteral("/autostart/krgb-tray.desktop");
 }
 
 void MainWindow::onConnectionChanged(bool connected, const QString& path) {

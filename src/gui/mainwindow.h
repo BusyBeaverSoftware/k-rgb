@@ -33,6 +33,7 @@ private Q_SLOTS:
     void onModeChanged();
     void onBrightnessChanged(int value);
     void onAutostartToggled(bool checked);
+    void onTrayAutostartToggled(bool checked);
     void onConnectionChanged(bool connected, const QString& path);
     void onError(const QString& message);
 
@@ -68,7 +69,9 @@ private:
     void             refreshProfileCombo();
     void             rebuildProfilesMenu();
     LightingSettings currentSettings() const;
+    void             writeAutostartEntry(const QString& path, const QString& name, const QString& args);
     QString          autostartFilePath() const;
+    QString          trayAutostartFilePath() const;
 
     KeyboardController* controller_;
     QVector<ModeEntry>  modes_;
@@ -86,7 +89,8 @@ private:
     QComboBox*    directionCombo_   = nullptr;
     QSlider*      brightnessSlider_ = nullptr;
     QLabel*       brightnessValue_  = nullptr;
-    QCheckBox*    autostartCheck_   = nullptr;
+    QCheckBox*    autostartCheck_     = nullptr;
+    QCheckBox*    trayAutostartCheck_ = nullptr;
     QPushButton*  applyButton_      = nullptr;
     QPushButton*  offButton_        = nullptr;
 
