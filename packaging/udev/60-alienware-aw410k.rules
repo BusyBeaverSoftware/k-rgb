@@ -1,0 +1,11 @@
+# Alienware AW410K RGB mechanical keyboard (04f2:1968)
+# Grants the logged-in desktop user read/write access to the vendor HID
+# interface used for lighting control, so k-rgb can run without root.
+#
+# Install:
+#   sudo cp 60-alienware-aw410k.rules /etc/udev/rules.d/
+#   sudo udevadm control --reload-rules
+#   sudo udevadm trigger --subsystem-match=hidraw
+# (or simply replug the keyboard afterwards)
+
+KERNEL=="hidraw*", SUBSYSTEM=="hidraw", ATTRS{idVendor}=="04f2", ATTRS{idProduct}=="1968", MODE="0660", GROUP="plugdev", TAG+="uaccess"

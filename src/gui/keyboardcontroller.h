@@ -1,0 +1,44 @@
+// KeyboardController — Qt-friendly wrapper around krgb::AW410KDevice.
+//
+// Owns the device handle, polls for presence/hot-plug, and exposes apply
+// operations (solid colour, hardware effect, off). All user-facing colour
+// scaling (brightness) happens here.
+#pragma once
+
+#include <QColor>
+#include <QObject>
+#include <QString>
+
+#include "core/aw410k_device.h"
+
+class QTimer;
+
+class KeyboardController : public QObject {
+    Q_OBJECT
+public:
+    explicit KeyboardController(QObject* parent = nullptr);
+    ~KeyboardController() override;
+
+    bool    isConnected() const { return connected_; }
+    QString devicePath() const { return path_; }
+
+public Q_SLOTS:
+    bool applySolid(const QColor& color, int brightnessPct);
+    bool applyRainbow(int brightnessPct);  // per-key static rainbow across all keys
+    bool applyEffect(int modeValue, int speedValue, int directionValue,
+                     const QColor& color, int brightnessPct);
+    bool applyOff();
+    void refresh();  // re-check device presence (called by poll timer)
+
+Q_SIGNALS:
+    void connectionChanged(bool connected, const QString& path);
+    void error(const QString& message);
+
+private:
+    bool ensureOpen();
+
+    krgb::AW410KDevice device_;
+    bool               connected_ = false;
+    QString            path_;
+    QTimer*            pollTimer_ = nullptr;
+};
