@@ -56,7 +56,6 @@ void MainWindow::populateModes() {
     modes_ = {
         { i18n("Solid colour"),     static_cast<int>(Mode::Direct),      true,  false, true,  false, false },
         { i18n("Rainbow (static)"), 0,                                   false, true,  false, false, false },
-        { i18n("Static"),           static_cast<int>(Mode::Static),      false, false, true,  false, false },
         { i18n("Breathing"),        static_cast<int>(Mode::Breathing),   false, false, true,  true,  false },
         { i18n("Pulse"),            static_cast<int>(Mode::Pulse),       false, false, true,  true,  false },
         { i18n("Spectrum"),         static_cast<int>(Mode::Spectrum),    false, false, false, true,  false },
