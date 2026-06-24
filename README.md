@@ -116,10 +116,12 @@ Two independent login options live at the bottom of the window:
   tray (`krgb --tray`) so the quick-switcher is always available. Tick both if
   you want the tray icon *and* your lighting restored.
 
-**Per-key editor:** choose **Per-key (custom)** as the mode to reveal a
-graphical keyboard. Click a key to select it, drag a box to select many, or
-Ctrl-click to add/remove. Pick a colour, then **Paint Selected** (or **Fill
-All**); **Off Selected** turns keys dark. Changes apply live.
+**Per-key editor:** click the **Per-Key Editor…** button next to the mode
+selector (or choose **Per-key (custom)** as the mode) to reveal a graphical
+keyboard. Click a key to select it, drag a box to select many, or Ctrl-click to
+add/remove. Pick a colour, then **Paint Selected** (or **Fill All**); **Off
+Selected** turns keys dark. Changes apply live. The **Presets** row offers
+ready-made **USA Flag** and **Ukraine Flag** layouts as a starting point.
 
 **Profiles:** use the **Profile** bar at the top to create, rename, or delete
 named setups. Switching profiles (in the window or from the tray's **Profiles**

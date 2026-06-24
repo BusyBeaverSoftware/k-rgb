@@ -3,6 +3,7 @@
 #include "keyboardcontroller.h"
 #include "keyboardwidget.h"
 #include "core/aw410k_device.h"
+#include "core/keymap.h"
 
 #include <QActionGroup>
 #include <QApplication>
@@ -36,6 +37,57 @@
 using krgb::Mode;
 using krgb::Speed;
 using krgb::Direction;
+
+namespace {
+
+// --- Per-key flag presets ---------------------------------------------------
+// Built from the physical key geometry in keymap.h so the bands line up with
+// where the keys actually sit on the board.
+
+// Ukraine: blue top half, yellow bottom half (split across the layout height).
+QHash<QString, QColor> makeUkraineFlag() {
+    QHash<QString, QColor> m;
+    const QColor blue(0, 87, 183);
+    const QColor yellow(255, 215, 0);
+    const float mid = krgb::kLayoutHeight / 2.0f;
+    for(std::size_t i = 0; i < krgb::kKeyCount; ++i) {
+        const krgb::KeyDef& k = krgb::kKeyMap[i];
+        const float cy = k.y + k.h / 2.0f;
+        m.insert(QString::fromLatin1(k.name), cy < mid ? blue : yellow);
+    }
+    return m;
+}
+
+// USA: blue star field in the top-left canton, red/white stripes by row, with a
+// scatter of white "stars" inside the canton.
+QHash<QString, QColor> makeUsaFlag() {
+    QHash<QString, QColor> m;
+    const QColor red(178, 34, 52);
+    const QColor white(255, 255, 255);
+    const QColor blue(60, 59, 110);
+    const float cantonRight  = 7.5f;
+    const float cantonBottom = 3.0f;
+    for(std::size_t i = 0; i < krgb::kKeyCount; ++i) {
+        const krgb::KeyDef& k = krgb::kKeyMap[i];
+        const float cx = k.x + k.w / 2.0f;
+        const float cy = k.y + k.h / 2.0f;
+        QColor c;
+        if(cx < cantonRight && cy < cantonBottom) {
+            c = blue;  // canton (star field)
+        } else {
+            const int row = static_cast<int>(cy);  // ~one stripe per key row
+            c = (row % 2 == 0) ? red : white;       // top stripe red
+        }
+        m.insert(QString::fromLatin1(k.name), c);
+    }
+    // White "stars" scattered through the blue canton.
+    for(const char* s : {"1", "3", "5", "F2", "F4", "W", "E", "R", "T"}) {
+        m.insert(QString::fromLatin1(s), white);
+    }
+    return m;
+}
+
+} // namespace
 
 MainWindow::MainWindow(KeyboardController* controller, QWidget* parent)
     : KMainWindow(parent), controller_(controller) {
@@ -103,7 +155,18 @@ void MainWindow::buildUi() {
     for(const ModeEntry& m : modes_) {
         modeCombo_->addItem(m.name);
     }
-    form->addRow(i18n("Mode:"), modeCombo_);
+    auto* modeRow = new QHBoxLayout();
+    modeRow->addWidget(modeCombo_, 1);
+    auto* perKeyButton = new QPushButton(QIcon::fromTheme(QStringLiteral("input-keyboard")),
+                                         i18n("Per-Key Editor…"), central);
+    perKeyButton->setToolTip(i18n("Paint individual keys — includes USA and Ukraine flag presets."));
+    modeRow->addWidget(perKeyButton);
+    form->addRow(i18n("Mode:"), modeRow);
+    connect(perKeyButton, &QPushButton::clicked, this, [this] {
+        for(int i = 0; i < modes_.size(); ++i) {
+            if(modes_.at(i).perkey) { modeCombo_->setCurrentIndex(i); break; }
+        }
+    });
 
     colorButton_ = new KColorButton(QColor(0, 170, 255), central);
     form->addRow(i18n("Colour:"), colorButton_);
@@ -155,6 +218,24 @@ void MainWindow::buildUi() {
     pkControls->addWidget(offSelBtn);
     pkControls->addWidget(fillBtn);
     pkLayout->addLayout(pkControls);
+
+    auto* presetRow = new QHBoxLayout();
+    presetRow->addWidget(new QLabel(i18n("Presets:"), perKeyPanel_));
+    auto* usaBtn = new QPushButton(i18n("USA Flag"), perKeyPanel_);
+    auto* ukrBtn = new QPushButton(i18n("Ukraine Flag"), perKeyPanel_);
+    presetRow->addWidget(usaBtn);
+    presetRow->addWidget(ukrBtn);
+    presetRow->addStretch();
+    pkLayout->addLayout(presetRow);
+
+    connect(usaBtn, &QPushButton::clicked, this, [this] {
+        keyboardWidget_->setKeyColors(makeUsaFlag());
+        onPerKeyChanged();  // apply live + save to the active profile
+    });
+    connect(ukrBtn, &QPushButton::clicked, this, [this] {
+        keyboardWidget_->setKeyColors(makeUkraineFlag());
+        onPerKeyChanged();
+    });
 
     auto* hint = new QLabel(
         i18n("Click keys to select; drag to box-select; Ctrl-click to add. "
