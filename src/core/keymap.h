@@ -12,13 +12,22 @@
 
 namespace krgb {
 
+// Supported keyboard models. The AW410K and AW510K share the exact same
+// lighting protocol and LED index map; the AW510K simply lacks the discrete
+// volume-down/volume-up keys. (Verified against the OpenRGB Alienware drivers.)
+enum Model : std::uint8_t { ModelAW410K = 0, ModelAW510K = 1 };
+
+constexpr std::uint8_t modelBit(Model m) { return static_cast<std::uint8_t>(1u << m); }
+inline constexpr std::uint8_t kAllModels = 0xFF;
+
 struct KeyDef {
     const char*  name;
     std::uint8_t idx;
     float        x;
     float        y;
-    float        w = 1.0f;
-    float        h = 1.0f;
+    float        w      = 1.0f;
+    float        h      = 1.0f;
+    std::uint8_t models = kAllModels;  // bitmask of models that have this key
 };
 
 inline constexpr KeyDef kKeyMap[] = {
@@ -27,7 +36,9 @@ inline constexpr KeyDef kKeyMap[] = {
     {"F5",0x70, 6.5f,0},{"F6",0x68, 7.5f,0},{"F7",0x60, 8.5f,0},{"F8",0x58, 9.5f,0},
     {"F9",0x50, 11,0},{"F10",0x48, 12,0},{"F11",0x40, 13,0},{"F12",0x38, 14,0},
     {"PRTSC",0x30, 15.25f,0},{"SCRLK",0x28, 16.25f,0},{"PAUSE",0x20, 17.25f,0},
-    {"MUTE",0x18, 18.5f,0},{"VOLDN",0x10, 19.5f,0},{"VOLUP",0x08, 20.5f,0},
+    {"MUTE",0x18, 18.5f,0},
+    {"VOLDN",0x10, 19.5f,0, 1.0f,1.0f, modelBit(ModelAW410K)},  // AW510K has no
+    {"VOLUP",0x08, 20.5f,0, 1.0f,1.0f, modelBit(ModelAW410K)},  // discrete vol keys
 
     // Number row (y = 1.25)
     {"`",0xB1, 0,1.25f},{"1",0xA1, 1,1.25f},{"2",0x99, 2,1.25f},{"3",0x91, 3,1.25f},
@@ -72,8 +83,37 @@ inline constexpr KeyDef kKeyMap[] = {
 
 inline constexpr std::size_t kKeyCount = sizeof(kKeyMap) / sizeof(kKeyMap[0]);
 
-// Total layout extent in key-units (for the editor to scale to fit).
+// Total layout extent in key-units (for the editor to scale to fit). Both
+// supported models share the same physical layout.
 inline constexpr float kLayoutWidth  = 22.5f;
 inline constexpr float kLayoutHeight = 6.25f;
+
+// --- Supported keyboards ----------------------------------------------------
+// A model is identified by USB vendor/product id on its lighting interface.
+// `bit` selects which kKeyMap keys belong to it (see KeyDef::models).
+struct KeyboardModel {
+    const char*   name;
+    std::uint16_t vendorId;
+    std::uint16_t productId;
+    int           lightingInterface;
+    std::uint8_t  bit;
+};
+
+inline constexpr KeyboardModel kModels[] = {
+    { "Alienware AW410K", 0x04F2, 0x1968, 2, modelBit(ModelAW410K) },
+    { "Alienware AW510K", 0x04F2, 0x1830, 2, modelBit(ModelAW510K) },
+};
+inline constexpr std::size_t kModelCount = sizeof(kModels) / sizeof(kModels[0]);
+
+// Number of addressable keys for a given model (kKeyMap entries it includes).
+inline std::size_t modelKeyCount(std::uint8_t bit) {
+    std::size_t n = 0;
+    for(std::size_t i = 0; i < kKeyCount; ++i) {
+        if(kKeyMap[i].models & bit) {
+            ++n;
+        }
+    }
+    return n;
+}
 
 } // namespace krgb

@@ -23,6 +23,10 @@ public:
     QHash<QString, QColor> keyColors() const { return colors_; }
     void                   setKeyColors(const QHash<QString, QColor>& colors);
 
+    // Restrict the drawn/selectable keys to those a model has (bit from
+    // KeyboardModel::bit; 0xFF = all keys). Repaints.
+    void setModelBit(quint8 bit);
+
     QStringList selectedKeys() const;
 
 public Q_SLOTS:
@@ -57,6 +61,7 @@ private:
     QSet<QString>          selected_;
     QVector<KeyRect>       rects_;
 
+    quint8        modelBit_   = 0xFF;  // which keys to draw (KeyboardModel::bit)
     bool          dragging_   = false;
     bool          moved_      = false;
     QPointF       pressPos_;

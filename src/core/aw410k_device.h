@@ -1,16 +1,19 @@
-// AW410KDevice — low-level driver for the Alienware AW410K RGB keyboard.
+// AW410KDevice — low-level driver for the Alienware AW410K-family RGB keyboards
+// (AW410K and AW510K — same lighting protocol; see keymap.h kModels).
 //
 // Talks directly to the keyboard's vendor HID interface (interface 2,
 // usage page 0xFF00) via /dev/hidrawN. No external dependencies; Linux-only.
 //
-// This is a clean C++ implementation of the AW410K lighting protocol; packet
-// layouts are validated against tools/aw410k.py.
+// This is a clean C++ implementation of the lighting protocol; packet layouts
+// are validated against tools/aw410k.py.
 #pragma once
 
 #include <array>
 #include <cstdint>
 #include <string>
 #include <vector>
+
+#include "core/keymap.h"
 
 namespace krgb {
 
@@ -38,24 +41,26 @@ enum class ColorMode : std::uint8_t { Single = 0x01, Two = 0x02, Rainbow = 0x03 
 
 class AW410KDevice {
 public:
-    static constexpr std::uint16_t kVendorId          = 0x04F2;
-    static constexpr std::uint16_t kProductId         = 0x1968;
-    static constexpr int           kLightingInterface = 2;
-    static constexpr int           kReportLen         = 65;  // report-id byte + 64 payload
+    static constexpr int kReportLen = 65;  // report-id byte + 64 payload
 
     AW410KDevice() = default;
     ~AW410KDevice();
     AW410KDevice(const AW410KDevice&) = delete;
     AW410KDevice& operator=(const AW410KDevice&) = delete;
 
-    // Locate the hidraw node for the lighting interface; "" if not present.
-    static std::string findDevicePath();
+    // Locate the hidraw node for a supported keyboard's lighting interface; ""
+    // if none present. If outModel is non-null it receives the matched model.
+    static std::string findDevice(const KeyboardModel** outModel);
+    static std::string findDevicePath() { return findDevice(nullptr); }
 
     bool open(std::string* err = nullptr);                        // auto-detect
     bool openPath(const std::string& path, std::string* err = nullptr);
     void close();
     bool isOpen() const { return fd_ >= 0; }
     const std::string& path() const { return path_; }
+
+    // The detected model (null until a successful open()/openPath()).
+    const KeyboardModel* model() const { return model_; }
 
     // High-level operations.
     bool setSolid(std::uint8_t r, std::uint8_t g, std::uint8_t b);   // whole keyboard
@@ -80,8 +85,9 @@ private:
     bool writeReport(const Report& buf);
     bool sendFeature(const Report& buf);
 
-    int         fd_ = -1;
-    std::string path_;
+    int                  fd_    = -1;
+    std::string          path_;
+    const KeyboardModel* model_ = nullptr;
 };
 
 } // namespace krgb

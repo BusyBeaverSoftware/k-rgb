@@ -44,6 +44,6 @@ if(BUILD_GUI)
             DESTINATION ${KDE_INSTALL_METAINFODIR})
     install(FILES packaging/icons/io.github.busybeaversoftware.krgb.svg
             DESTINATION ${KDE_INSTALL_FULL_ICONDIR}/hicolor/scalable/apps)
-    install(FILES packaging/udev/60-alienware-aw410k.rules
+    install(FILES packaging/udev/60-alienware-keyboards.rules
             DESTINATION ${UDEV_RULES_INSTALL_DIR})
 endif()

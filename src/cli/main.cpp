@@ -171,9 +171,11 @@ int main(int argc, char** argv) {
     const std::string cmd = a[0];
 
     if(cmd == "info") {
-        const std::string p = AW410KDevice::findDevicePath();
-        std::printf("AW410K device : %s\n", p.empty() ? "NOT FOUND" : p.c_str());
-        std::printf("keys          : %zu\n", kKeyCount);
+        const KeyboardModel* model = nullptr;
+        const std::string p = AW410KDevice::findDevice(&model);
+        std::printf("device : %s\n", p.empty() ? "NOT FOUND" : p.c_str());
+        std::printf("model  : %s\n", model ? model->name : "-");
+        std::printf("keys   : %zu\n", model ? modelKeyCount(model->bit) : kKeyCount);
         return 0;
     }
 
@@ -202,11 +204,17 @@ int main(int argc, char** argv) {
     } else if(cmd == "wave" && a.size() >= 4) {
         ok = dev.setEffect(Mode::SingleWave, Speed::Normal, Direction::Left, ColorMode::Single, U(1), U(2), U(3));
     } else if(cmd == "rainbow") {
+        const std::uint8_t bit = dev.model() ? dev.model()->bit : kAllModels;
+        const std::size_t total = modelKeyCount(bit);
         std::vector<KeyColor> keys;
-        keys.reserve(kKeyCount);
+        keys.reserve(total);
+        std::size_t n = 0;
         for(std::size_t i = 0; i < kKeyCount; ++i) {
+            if(!(kKeyMap[i].models & bit)) {
+                continue;
+            }
             std::uint8_t r, g, b;
-            hsv(static_cast<double>(i) / kKeyCount, 1.0, 1.0, r, g, b);
+            hsv(total ? static_cast<double>(n++) / total : 0.0, 1.0, 1.0, r, g, b);
             keys.push_back({kKeyMap[i].idx, r, g, b});
         }
         ok = dev.setPerKey(keys);

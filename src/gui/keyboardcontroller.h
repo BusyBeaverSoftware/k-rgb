@@ -22,6 +22,8 @@ public:
 
     bool    isConnected() const { return connected_; }
     QString devicePath() const { return path_; }
+    QString modelName() const { return modelName_; }
+    quint8  modelBit() const { return modelBit_; }  // KeyboardModel::bit, 0xFF if unknown
 
 public Q_SLOTS:
     bool applySolid(const QColor& color, int brightnessPct);
@@ -44,5 +46,7 @@ private:
     krgb::AW410KDevice device_;
     bool               connected_ = false;
     QString            path_;
+    QString            modelName_;
+    quint8             modelBit_ = 0xFF;
     QTimer*            pollTimer_ = nullptr;
 };

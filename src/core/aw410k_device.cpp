@@ -46,7 +46,10 @@ AW410KDevice::~AW410KDevice() {
     close();
 }
 
-std::string AW410KDevice::findDevicePath() {
+std::string AW410KDevice::findDevice(const KeyboardModel** outModel) {
+    if(outModel) {
+        *outModel = nullptr;
+    }
     const fs::path base = "/sys/class/hidraw";
     std::error_code ec;
     if(!fs::is_directory(base, ec)) {
@@ -86,12 +89,21 @@ std::string AW410KDevice::findDevicePath() {
                 }
             }
         }
-        if(vid != kVendorId || pid != kProductId) {
+
+        // Match against every supported model.
+        const KeyboardModel* match = nullptr;
+        for(std::size_t i = 0; i < kModelCount; ++i) {
+            if(vid == kModels[i].vendorId && pid == kModels[i].productId) {
+                match = &kModels[i];
+                break;
+            }
+        }
+        if(!match) {
             continue;
         }
 
-        // Confirm this is the lighting interface (bInterfaceNumber == 2). The
-        // interface dir is an ancestor of the resolved HID device node.
+        // Confirm this is the lighting interface. The interface dir is an
+        // ancestor of the resolved HID device node.
         const fs::path real = fs::canonical(devlink, ec);
         int ifnum = -1;
         for(const fs::path& parent : {real.parent_path(), real.parent_path().parent_path()}) {
@@ -107,7 +119,10 @@ std::string AW410KDevice::findDevicePath() {
             }
         }
 
-        if(ifnum < 0 || ifnum == kLightingInterface) {
+        if(ifnum < 0 || ifnum == match->lightingInterface) {
+            if(outModel) {
+                *outModel = match;
+            }
             return std::string("/dev/") + name;
         }
     }
@@ -115,14 +130,19 @@ std::string AW410KDevice::findDevicePath() {
 }
 
 bool AW410KDevice::open(std::string* err) {
-    const std::string p = findDevicePath();
+    const KeyboardModel* m = nullptr;
+    const std::string p = findDevice(&m);
     if(p.empty()) {
         if(err) {
-            *err = "AW410K lighting interface not found (is the keyboard plugged in?)";
+            *err = "No supported Alienware keyboard found (is it plugged in?)";
         }
         return false;
     }
-    return openPath(p, err);
+    if(!openPath(p, err)) {
+        return false;
+    }
+    model_ = m;
+    return true;
 }
 
 bool AW410KDevice::openPath(const std::string& path, std::string* err) {
@@ -131,7 +151,7 @@ bool AW410KDevice::openPath(const std::string& path, std::string* err) {
     if(fd < 0) {
         if(err) {
             *err = "open " + path + ": " + std::strerror(errno) +
-                   " (install packaging/udev/60-alienware-aw410k.rules, or run as root)";
+                   " (install packaging/udev/60-alienware-keyboards.rules, or run as root)";
         }
         return false;
     }
@@ -145,6 +165,7 @@ void AW410KDevice::close() {
         ::close(fd_);
         fd_ = -1;
     }
+    model_ = nullptr;
 }
 
 bool AW410KDevice::writeReport(const Report& buf) {

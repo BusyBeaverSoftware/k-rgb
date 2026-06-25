@@ -86,7 +86,7 @@ QHash<QString, QColor> makeUsaFlag() {
 
 MainWindow::MainWindow(KeyboardController* controller, QWidget* parent)
     : KMainWindow(parent), controller_(controller) {
-    setWindowTitle(i18n("k-rgb — Alienware AW410K"));
+    setWindowTitle(i18n("k-rgb — Alienware keyboard lighting"));
     populateModes();
     buildUi();
     setupTray();
@@ -661,13 +661,18 @@ QString MainWindow::trayAutostartFilePath() const {
 
 void MainWindow::onConnectionChanged(bool connected, const QString& path) {
     if(connected) {
-        statusLabel_->setText(i18n("<span style='color:#27ae60'>●</span> %1",
-                                   path.isEmpty() ? i18n("AW410K") : path));
-        statusLabel_->setToolTip(i18n("Connected to Alienware AW410K"));
+        const QString model = controller_->modelName().isEmpty()
+                                  ? i18n("Alienware keyboard")
+                                  : controller_->modelName();
+        statusLabel_->setText(i18n("<span style='color:#27ae60'>●</span> %1", model));
+        statusLabel_->setToolTip(i18n("Connected to %1 (%2)", model,
+                                      path.isEmpty() ? i18n("unknown") : path));
+        keyboardWidget_->setModelBit(controller_->modelBit());
     } else {
         statusLabel_->setText(i18n("<span style='color:#c0392b'>●</span> Not found"));
         statusLabel_->setToolTip(
-            i18n("AW410K not found — check it's plugged in and the udev rule is installed."));
+            i18n("No supported Alienware keyboard found — check it's plugged in "
+                 "and the udev rule is installed."));
     }
 
     modeCombo_->setEnabled(connected);

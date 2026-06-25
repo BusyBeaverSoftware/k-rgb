@@ -66,6 +66,16 @@ void KeyboardWidget::setKeyColors(const QHash<QString, QColor>& colors) {
     update();
 }
 
+void KeyboardWidget::setModelBit(quint8 bit) {
+    if(bit == modelBit_) {
+        return;
+    }
+    modelBit_ = bit;
+    selected_.clear();
+    update();
+    Q_EMIT selectionChanged(0);
+}
+
 QStringList KeyboardWidget::selectedKeys() const {
     QStringList list(selected_.cbegin(), selected_.cend());
     list.sort();
@@ -86,6 +96,9 @@ void KeyboardWidget::recomputeLayout() {
 
     for(std::size_t i = 0; i < krgb::kKeyCount; ++i) {
         const krgb::KeyDef& k = krgb::kKeyMap[i];
+        if(!(k.models & modelBit_)) {
+            continue;  // key absent on the active model
+        }
         const QRectF cell(originX + k.x * unit + kKeyInset / 2.0,
                           originY + k.y * unit + kKeyInset / 2.0,
                           k.w * unit - kKeyInset,
@@ -211,7 +224,9 @@ void KeyboardWidget::clearSelection() {
 void KeyboardWidget::selectAll() {
     selected_.clear();
     for(std::size_t i = 0; i < krgb::kKeyCount; ++i) {
-        selected_.insert(QString::fromLatin1(krgb::kKeyMap[i].name));
+        if(krgb::kKeyMap[i].models & modelBit_) {
+            selected_.insert(QString::fromLatin1(krgb::kKeyMap[i].name));
+        }
     }
     update();
     Q_EMIT selectionChanged(selected_.size());
@@ -222,7 +237,9 @@ void KeyboardWidget::fillAll(const QColor& color) {
         return;
     }
     for(std::size_t i = 0; i < krgb::kKeyCount; ++i) {
-        colors_.insert(QString::fromLatin1(krgb::kKeyMap[i].name), color);
+        if(krgb::kKeyMap[i].models & modelBit_) {
+            colors_.insert(QString::fromLatin1(krgb::kKeyMap[i].name), color);
+        }
     }
     update();
     Q_EMIT changed();

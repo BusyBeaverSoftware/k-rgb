@@ -30,13 +30,22 @@ small, fast, and dependency-light.
 
 ## Supported hardware
 
-| Device | USB ID | Interface |
-| --- | --- | --- |
-| Alienware AW410K RGB Mechanical Keyboard | `04f2:1968` | 2 (vendor HID, `0xFF00`) |
+| Device | USB ID | Interface | Per-key |
+| --- | --- | --- | --- |
+| Alienware AW410K RGB Mechanical Keyboard | `04f2:1968` | 2 (vendor HID, `0xFF00`) | ✅ |
+| Alienware AW510K Low-Profile RGB Keyboard | `04f2:1830` | 2 (vendor HID, `0xFF00`) | ✅* |
 
-The protocol is the AW410K/AW510K family; adding the closely-related **AW510K**
-(`04f2:1830`) would be a small change. Contributions for other Alienware
-devices are welcome.
+k-rgb **auto-detects** which model is plugged in and names it in the window and
+`krgb-cli info`. Both share the same lighting protocol and LED index map (the
+AW510K simply lacks the discrete volume keys), so all effects and the per-key
+editor work on either. New models are added as a one-line entry in the
+`kModels` table in `src/core/keymap.h` — see [Adding a keyboard](#adding-a-keyboard).
+
+\* The AW510K mapping is derived from the [OpenRGB](https://openrgb.org/)
+Alienware drivers and hasn't yet been confirmed on physical AW510K hardware —
+reports welcome. Detection covers only models in the table; an unknown keyboard
+can't be assumed compatible because the protocol is reverse-engineered per
+model. Contributions for other Alienware devices are welcome.
 
 ## Requirements
 
@@ -89,7 +98,7 @@ Install the udev rule so your desktop user can access the keyboard's lighting
 interface:
 
 ```bash
-sudo cp packaging/udev/60-alienware-aw410k.rules /etc/udev/rules.d/
+sudo cp packaging/udev/60-alienware-keyboards.rules /etc/udev/rules.d/
 sudo udevadm control --reload-rules
 sudo udevadm trigger --subsystem-match=hidraw
 ```
@@ -166,13 +175,29 @@ interface 2). Lighting is set by writing 65-byte reports to its `hidraw` node:
 - hardware effects are selected with a single mode packet.
 
 The packet format was learned from the open-source
-[OpenRGB](https://openrgb.org/) project's AW410K driver (the protocol facts);
-this is an original, independent implementation.
+[OpenRGB](https://openrgb.org/) project's Alienware drivers (the protocol
+facts); this is an original, independent implementation.
+
+## Adding a keyboard
+
+Supported keyboards live in the `kModels` table in `src/core/keymap.h`. To add a
+model in the same protocol family:
+
+1. Add a `KeyboardModel` row — `name`, USB `vendorId`/`productId`, lighting
+   interface, and a unique model bit (`modelBit(ModelXXX)`).
+2. If its key layout differs from the AW410K, tag the affected `kKeyMap` entries
+   with a `models` mask so only the right model includes them (e.g. the AW510K
+   excludes the discrete volume keys). Identical layouts need no changes.
+3. Add the USB id to `packaging/udev/60-alienware-keyboards.rules`.
+
+Detection, naming, the per-key editor, and effects then work automatically. If
+the model uses a *different* lighting protocol, the packet builders in
+`src/core/aw410k_device.cpp` would need a variant — open an issue.
 
 ## Project layout
 
 ```
-src/core/     AW410KDevice — the hidraw protocol engine (no Qt/KF6)
+src/core/     AW410KDevice — model-driven hidraw protocol engine (no Qt/KF6)
 src/cli/      krgb-cli — command-line front-end
 src/gui/      krgb — KDE/Qt 6 GUI (KStatusNotifierItem, KConfig, KColorButton)
 tools/        aw410k.py — Python reference driver
@@ -181,9 +206,8 @@ packaging/    udev rule for rootless access
 
 ## Roadmap
 
-- Per-key colours in the CLI (`krgb-cli` currently does single keys / rainbow)
 - Import/export profiles to a file
-- Additional Alienware devices (AW510K, mouse, headset, chassis AlienFX)
+- More Alienware devices (mice, headsets, chassis AlienFX)
 
 ## Credits
 

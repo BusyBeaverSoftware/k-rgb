@@ -32,19 +32,29 @@ KeyboardController::KeyboardController(QObject* parent)
 KeyboardController::~KeyboardController() = default;
 
 void KeyboardController::refresh() {
-    const std::string p = AW410KDevice::findDevicePath();
+    const krgb::KeyboardModel* model = nullptr;
+    const std::string p = AW410KDevice::findDevice(&model);
     const QString qp = QString::fromStdString(p);
     const bool nowConnected = !p.empty();
 
     if(nowConnected != connected_ || qp != path_) {
         connected_ = nowConnected;
         path_ = qp;
+        modelName_ = model ? QString::fromLatin1(model->name) : QString();
+        modelBit_ = model ? model->bit : krgb::kAllModels;
         if(!connected_ && device_.isOpen()) {
             device_.close();
         }
         Q_EMIT connectionChanged(connected_, path_);
     }
 }
+
+namespace {
+// Bit identifying the keys the currently-open device supports.
+std::uint8_t activeBit(const krgb::AW410KDevice& dev) {
+    return dev.model() ? dev.model()->bit : krgb::kAllModels;
+}
+} // namespace
 
 bool KeyboardController::ensureOpen() {
     if(device_.isOpen()) {
@@ -75,10 +85,16 @@ bool KeyboardController::applyRainbow(int brightnessPct) {
         return false;
     }
     const qreal v = qBound(0, brightnessPct, 100) / 100.0;
+    const std::uint8_t bit = activeBit(device_);
+    const std::size_t total = krgb::modelKeyCount(bit);
     std::vector<krgb::KeyColor> keys;
-    keys.reserve(krgb::kKeyCount);
+    keys.reserve(total);
+    std::size_t n = 0;
     for(std::size_t i = 0; i < krgb::kKeyCount; ++i) {
-        const qreal hue = static_cast<qreal>(i) / krgb::kKeyCount;
+        if(!(krgb::kKeyMap[i].models & bit)) {
+            continue;  // key not present on this model
+        }
+        const qreal hue = total ? static_cast<qreal>(n++) / total : 0.0;
         const QColor c = QColor::fromHsvF(hue, 1.0, v);
         keys.push_back({krgb::kKeyMap[i].idx,
                         static_cast<std::uint8_t>(c.red()),
@@ -97,9 +113,13 @@ bool KeyboardController::applyPerKey(const QHash<QString, QColor>& keyColors, in
         return false;
     }
     const int pct = qBound(0, brightnessPct, 100);
+    const std::uint8_t bit = activeBit(device_);
     std::vector<krgb::KeyColor> keys;
     keys.reserve(krgb::kKeyCount);
     for(std::size_t i = 0; i < krgb::kKeyCount; ++i) {
+        if(!(krgb::kKeyMap[i].models & bit)) {
+            continue;  // key not present on this model
+        }
         const QString name = QString::fromLatin1(krgb::kKeyMap[i].name);
         const QColor c = keyColors.value(name, QColor(0, 0, 0));
         keys.push_back({krgb::kKeyMap[i].idx,
