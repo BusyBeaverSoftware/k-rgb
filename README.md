@@ -131,13 +131,20 @@ login.
 ### CLI
 
 ```bash
-krgb-cli solid 0 255 255      # whole keyboard cyan
-krgb-cli rainbow              # per-key static rainbow
-krgb-cli spectrum             # animated hardware rainbow
+krgb-cli solid 0 255 255            # whole keyboard cyan
+krgb-cli rainbow                    # per-key static rainbow
+krgb-cli spectrum                   # animated hardware rainbow
 krgb-cli breathing 0 128 255
-krgb-cli key ESC 255 0 0      # light a single key (see keymap)
+krgb-cli key ESC 255 0 0            # light a single key (others off)
+krgb-cli perkey W=255,0,0 A=255,0,0 S=255,0,0 D=255,0,0   # set several keys
+krgb-cli perkey ESC=#00aaff F1=#00aaff                     # #RRGGBB also works
+krgb-cli perkey-file mylayout.txt  # 'KEY R G B' / 'KEY=#RRGGBB' lines (- = stdin)
 krgb-cli off
 ```
+
+`perkey` and `perkey-file` set the listed keys in one frame; any key you don't
+list is turned off. Key labels are case-insensitive (see `src/core/keymap.h`);
+colours accept `R,G,B`, `R G B`, or `#RRGGBB`. File lines may use `#` comments.
 
 ### Python reference tool
 

@@ -4,11 +4,15 @@
 #include "core/keymap.h"
 
 #include <cmath>
+#include <cstdint>
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
 #include <strings.h>
 
+#include <fstream>
+#include <iostream>
+#include <sstream>
 #include <string>
 #include <vector>
 
@@ -36,18 +40,124 @@ void hsv(double h, double s, double v, std::uint8_t& r, std::uint8_t& g, std::ui
     b = static_cast<std::uint8_t>(bb * 255);
 }
 
+// Case-insensitive key-label -> hardware LED index lookup.
+bool findKeyIdx(const std::string& name, std::uint8_t& idx) {
+    for(std::size_t i = 0; i < kKeyCount; ++i) {
+        if(strcasecmp(kKeyMap[i].name, name.c_str()) == 0) {
+            idx = kKeyMap[i].idx;
+            return true;
+        }
+    }
+    return false;
+}
+
+// Parse a colour spec: "#RRGGBB" or "R,G,B"/"R G B" (channels accept 0x.. too).
+bool parseColorSpec(std::string spec, std::uint8_t& r, std::uint8_t& g, std::uint8_t& b) {
+    const std::size_t s = spec.find_first_not_of(" \t");
+    if(s == std::string::npos) {
+        return false;
+    }
+    spec = spec.substr(s);
+    if(spec[0] == '#') {
+        if(spec.size() < 7) {
+            return false;
+        }
+        char* end = nullptr;
+        const unsigned long v = std::strtoul(spec.substr(1, 6).c_str(), &end, 16);
+        if(end && *end) {
+            return false;
+        }
+        r = (v >> 16) & 0xFF;
+        g = (v >> 8) & 0xFF;
+        b = v & 0xFF;
+        return true;
+    }
+    for(char& c : spec) {
+        if(c == ',') {
+            c = ' ';
+        }
+    }
+    std::istringstream is(spec);
+    long rr, gg, bb;
+    if(!(is >> rr >> gg >> bb)) {
+        return false;
+    }
+    if(rr < 0 || gg < 0 || bb < 0 || rr > 255 || gg > 255 || bb > 255) {
+        return false;
+    }
+    r = static_cast<std::uint8_t>(rr);
+    g = static_cast<std::uint8_t>(gg);
+    b = static_cast<std::uint8_t>(bb);
+    return true;
+}
+
+// Load "KEY R G B" / "KEY=#RRGGBB" lines (# comments, blanks ok) from a file
+// (or stdin when path is "-") into a key list. Returns false (after printing an
+// error) on the first bad line.
+bool loadPerKeyFile(const std::string& path, std::vector<KeyColor>& out) {
+    std::ifstream file;
+    std::istream* in = &std::cin;
+    if(path != "-") {
+        file.open(path);
+        if(!file) {
+            std::fprintf(stderr, "error: cannot open %s\n", path.c_str());
+            return false;
+        }
+        in = &file;
+    }
+    std::string line;
+    int lineno = 0;
+    while(std::getline(*in, line)) {
+        ++lineno;
+        const std::size_t s = line.find_first_not_of(" \t\r\n");
+        if(s == std::string::npos || line[s] == '#') {
+            continue;  // blank or comment
+        }
+        std::string l = line.substr(s);
+        for(char& c : l) {
+            if(c == '=') {
+                c = ' ';
+            }
+        }
+        std::istringstream is(l);
+        std::string name;
+        is >> name;
+        std::string rest;
+        std::getline(is, rest);  // remainder is the colour spec
+
+        std::uint8_t idx, r, g, b;
+        if(!findKeyIdx(name, idx)) {
+            std::fprintf(stderr, "%s:%d: unknown key label: %s\n", path.c_str(), lineno, name.c_str());
+            return false;
+        }
+        if(!parseColorSpec(rest, r, g, b)) {
+            std::fprintf(stderr, "%s:%d: bad colour: %s\n", path.c_str(), lineno, rest.c_str());
+            return false;
+        }
+        out.push_back({idx, r, g, b});
+    }
+    if(out.empty()) {
+        std::fprintf(stderr, "error: no key entries read from %s\n", path.c_str());
+        return false;
+    }
+    return true;
+}
+
 void usage() {
     std::printf(
         "krgb-cli — Alienware AW410K RGB control\n"
         "  krgb-cli info\n"
-        "  krgb-cli solid R G B        whole keyboard, direct\n"
-        "  krgb-cli static R G B       whole keyboard, hardware static\n"
+        "  krgb-cli solid R G B          whole keyboard, direct\n"
+        "  krgb-cli static R G B         whole keyboard, hardware static\n"
         "  krgb-cli off\n"
-        "  krgb-cli spectrum           hardware rainbow spectrum\n"
+        "  krgb-cli spectrum             hardware rainbow spectrum\n"
         "  krgb-cli breathing R G B\n"
-        "  krgb-cli wave R G B         single-colour wave\n"
-        "  krgb-cli rainbow            per-key static rainbow\n"
-        "  krgb-cli key LABEL R G B    light one key (see keymap.h)\n");
+        "  krgb-cli wave R G B           single-colour wave\n"
+        "  krgb-cli rainbow              per-key static rainbow\n"
+        "  krgb-cli key LABEL R G B      light one key (others off)\n"
+        "  krgb-cli perkey K=R,G,B ...   set listed keys (others off)\n"
+        "                                colour is R,G,B or #RRGGBB\n"
+        "  krgb-cli perkey-file FILE     read 'KEY R G B' lines (- = stdin)\n");
 }
 
 } // namespace
@@ -102,19 +212,38 @@ int main(int argc, char** argv) {
         ok = dev.setPerKey(keys);
     } else if(cmd == "key" && a.size() >= 5) {
         std::uint8_t idx = 0;
-        bool found = false;
-        for(std::size_t i = 0; i < kKeyCount; ++i) {
-            if(strcasecmp(kKeyMap[i].name, a[1].c_str()) == 0) {
-                idx = kKeyMap[i].idx;
-                found = true;
-                break;
-            }
-        }
-        if(!found) {
+        if(!findKeyIdx(a[1], idx)) {
             std::fprintf(stderr, "unknown key label: %s\n", a[1].c_str());
             return 2;
         }
         ok = dev.setPerKey({{idx, U(2), U(3), U(4)}});
+    } else if(cmd == "perkey" && a.size() >= 2) {
+        std::vector<KeyColor> keys;
+        for(std::size_t i = 1; i < a.size(); ++i) {
+            const std::size_t eq = a[i].find('=');
+            if(eq == std::string::npos) {
+                std::fprintf(stderr, "bad argument (expected KEY=R,G,B): %s\n", a[i].c_str());
+                return 2;
+            }
+            const std::string name = a[i].substr(0, eq);
+            std::uint8_t idx, r, g, b;
+            if(!findKeyIdx(name, idx)) {
+                std::fprintf(stderr, "unknown key label: %s\n", name.c_str());
+                return 2;
+            }
+            if(!parseColorSpec(a[i].substr(eq + 1), r, g, b)) {
+                std::fprintf(stderr, "bad colour for %s: %s\n", name.c_str(), a[i].substr(eq + 1).c_str());
+                return 2;
+            }
+            keys.push_back({idx, r, g, b});
+        }
+        ok = dev.setPerKey(keys);
+    } else if(cmd == "perkey-file" && a.size() >= 2) {
+        std::vector<KeyColor> keys;
+        if(!loadPerKeyFile(a[1], keys)) {
+            return 2;  // loadPerKeyFile already printed the error
+        }
+        ok = dev.setPerKey(keys);
     } else {
         usage();
         return 2;
