@@ -15,7 +15,7 @@ int main(int argc, char** argv) {
 
     KAboutData about(QStringLiteral("krgb"),
                      i18n("k-rgb"),
-                     QStringLiteral("0.2.0"),
+                     QStringLiteral("0.3.0"),
                      i18n("Control the RGB lighting on the Alienware AW410K keyboard"),
                      KAboutLicense::GPL_V2,
                      i18n("© 2026 Randy Yates"));

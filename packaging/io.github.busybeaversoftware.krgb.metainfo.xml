@@ -38,6 +38,11 @@
   </developer>
   <content_rating type="oars-1.1"/>
   <releases>
+    <release version="0.3.0" date="2026-06-24">
+      <description>
+        <p>Adds automatic detection of the Alienware AW510K alongside the AW410K, one-click USA and Ukraine flag presets in the per-key editor, command-line per-key control, and an option to start in the system tray at login.</p>
+      </description>
+    </release>
     <release version="0.2.0" date="2026-06-24">
       <description>
         <p>Adds a graphical per-key colour editor and named profiles you can switch from the window or the system tray.</p>

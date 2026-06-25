@@ -15,9 +15,12 @@ small, fast, and dependency-light.
 
 - **Solid colour** across the whole keyboard
 - **Per-key custom editor** — a graphical keyboard you paint directly: click,
-  box-select, or Ctrl-click keys, pick a colour, and assign it per key
+  box-select, or Ctrl-click keys, pick a colour, and assign it per key; with
+  one-click **USA** and **Ukraine** flag presets
 - **Named profiles** — save any number of lighting setups and switch between
   them from the window or the tray; the active one is restored at login
+- **Auto-detects** your keyboard (Alienware **AW410K** / **AW510K**) and names
+  it; the per-key editor adapts to the detected model's layout
 - **Per-key static rainbow** (all 107 keys individually addressed)
 - **Hardware effects** that run on the keyboard itself: Breathing,
   Pulse, Spectrum, Single Wave, Rainbow Wave, Scanner
